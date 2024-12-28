@@ -60,34 +60,64 @@ function M.toggl_start(opts)
   }):start()
 end
 
-function M.toggl_config()
+function M.toggl_init()
   Job:new({
     command = "toggl",
-    args = { "config", "--path" },
+    args = { "config", "init" },
     on_stdout = function(_, result)
-      local path = vim.trim(result)
-      if path == "" then
-        return
-      end
-
-      if not path:match("%.toml$") then
-        vim.notify("Invalid config path", vim.log.levels.ERROR)
-        return
-      end
-      vim.notify("Config path: " .. path)
-      vim.schedule(function()
-        vim.cmd("tabnew " .. vim.fn.fnameescape(path))
-      end)
+      vim.notify(result)
     end,
     on_stderr = function(_, result)
       vim.notify(result, vim.log.levels.ERROR)
     end,
-    on_exit = function(_, code)
-      if code ~= 0 then
-        vim.notify("Failed to get config path", vim.log.levels.ERROR)
-      end
-    end,
   }):start()
+end
+
+function M.toggl_config()
+  -- Assume the config exists until proven otherwise
+  local config_exists = true
+
+  Job
+    :new({
+      command = "toggl",
+      args = { "config", "--path" },
+      on_stdout = function(_, result)
+        if not config_exists then
+          return
+        end
+
+        result = vim.trim(result)
+        if result == "" then
+          return
+        end
+
+        if result:match("No config file found") then
+          vim.notify("Run TogglInit to initialize config.", vim.log.levels.INFO)
+          config_exists = false
+          return
+        end
+
+        if not result:match("%.toml$") then
+          vim.notify("Invalid config path", vim.log.levels.ERROR)
+          return
+        end
+
+        local path = result
+        vim.notify("Config path: " .. path)
+        vim.schedule(function()
+          vim.cmd("tabnew " .. vim.fn.fnameescape(path))
+        end)
+      end,
+      on_stderr = function(_, result)
+        vim.notify(result, vim.log.levels.ERROR)
+      end,
+      on_exit = function(_, code)
+        if code ~= 0 then
+          vim.notify("Failed to get config path", vim.log.levels.ERROR)
+        end
+      end,
+    })
+    :start()
 end
 
 function M.toggl_current()
@@ -122,6 +152,7 @@ function M.setup(opts)
     return ""
   end
 
+  vim.api.nvim_create_user_command("TogglInit", M.toggl_init, {})
   vim.api.nvim_create_user_command("TogglConfig", M.toggl_config, {})
   vim.api.nvim_create_user_command("TogglStart", M.toggl_start, { nargs = "*" })
   vim.api.nvim_create_user_command("TogglCurrent", M.toggl_current, {})
