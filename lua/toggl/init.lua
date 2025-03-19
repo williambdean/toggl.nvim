@@ -2,6 +2,23 @@ local health = require("toggl.health")
 local Job = require("plenary.job")
 local M = {}
 
+local notify = function(msg, level)
+  if msg == nil then
+    return
+  end
+
+  vim.notify(msg, level, { title = "Toggl" })
+end
+
+local log = {
+  info = function(msg)
+    notify(msg, vim.log.levels.INFO)
+  end,
+  error = function(msg)
+    notify(msg, vim.log.levels.ERROR)
+  end,
+}
+
 local partial = function(fn, ...)
   local args = { ... }
   return function(...)
@@ -12,7 +29,7 @@ end
 function M.toggl_auth(get_token)
   local token = get_token()
   if token == "" then
-    vim.notify("Please provide get_token function to opts.")
+    log.error("Please provide a token")
     return
   end
 
@@ -20,10 +37,10 @@ function M.toggl_auth(get_token)
     command = "toggl",
     args = { "auth", token },
     on_stdout = function(_, result)
-      vim.notify(result)
+      log.info(result)
     end,
     on_stderr = function(_, result)
-      vim.notify(result, vim.log.levels.ERROR)
+      log.error(result)
     end,
   }):start()
 end
@@ -44,7 +61,7 @@ function M.toggl_start(opts)
   local description = opts.args
   description = remove_surrounding_quotes(description)
   if #description == 0 then
-    vim.notify("Please provide a description")
+    log.error("Please provide a description")
     return
   end
 
@@ -52,10 +69,10 @@ function M.toggl_start(opts)
     command = "toggl",
     args = { "start", description },
     on_stdout = function(_, result)
-      vim.notify(result)
+      log.info(result)
     end,
     on_stderr = function(_, result)
-      vim.notify(result, vim.log.levels.ERROR)
+      log.error(result)
     end,
   }):start()
 end
@@ -65,10 +82,10 @@ function M.toggl_init()
     command = "toggl",
     args = { "config", "init" },
     on_stdout = function(_, result)
-      vim.notify(result)
+      log.info(result)
     end,
     on_stderr = function(_, result)
-      vim.notify(result, vim.log.levels.ERROR)
+      log.info(result)
     end,
   }):start()
 end
@@ -77,47 +94,45 @@ function M.toggl_config()
   -- Assume the config exists until proven otherwise
   local config_exists = true
 
-  Job
-    :new({
-      command = "toggl",
-      args = { "config", "--path" },
-      on_stdout = function(_, result)
-        if not config_exists then
-          return
-        end
+  Job:new({
+    command = "toggl",
+    args = { "config", "--path" },
+    on_stdout = function(_, result)
+      if not config_exists then
+        return
+      end
 
-        result = vim.trim(result)
-        if result == "" then
-          return
-        end
+      result = vim.trim(result)
+      if result == "" then
+        return
+      end
 
-        if result:match("No config file found") then
-          vim.notify("Run TogglInit to initialize config.", vim.log.levels.INFO)
-          config_exists = false
-          return
-        end
+      if result:match("No config file found") then
+        log.info("Run TogglInit to initialize config.")
+        config_exists = false
+        return
+      end
 
-        if not result:match("%.toml$") then
-          vim.notify("Invalid config path", vim.log.levels.ERROR)
-          return
-        end
+      if not result:match("%.toml$") then
+        log.error("Invalid config path")
+        return
+      end
 
-        local path = result
-        vim.notify("Config path: " .. path)
-        vim.schedule(function()
-          vim.cmd("tabnew " .. vim.fn.fnameescape(path))
-        end)
-      end,
-      on_stderr = function(_, result)
-        vim.notify(result, vim.log.levels.ERROR)
-      end,
-      on_exit = function(_, code)
-        if code ~= 0 then
-          vim.notify("Failed to get config path", vim.log.levels.ERROR)
-        end
-      end,
-    })
-    :start()
+      local path = result
+      log.info("Config path: " .. path)
+      vim.schedule(function()
+        vim.cmd("tabnew " .. vim.fn.fnameescape(path))
+      end)
+    end,
+    on_stderr = function(_, result)
+      log.error(result)
+    end,
+    on_exit = function(_, code)
+      if code ~= 0 then
+        log.error("Failed to get config path")
+      end
+    end,
+  }):start()
 end
 
 function M.toggl_current()
@@ -125,10 +140,10 @@ function M.toggl_current()
     command = "toggl",
     args = { "current" },
     on_stdout = function(_, result)
-      vim.notify(result)
+      log.info(result)
     end,
     on_stderr = function(_, result)
-      vim.notify(result, "error")
+      log.error(result)
     end,
   }):start()
 end
@@ -138,10 +153,10 @@ function M.toggl_stop()
     command = "toggl",
     args = { "stop" },
     on_stdout = function(_, result)
-      vim.notify(result)
+      log.info(result)
     end,
     on_stderr = function(_, result)
-      vim.notify(result)
+      log.error(result)
     end,
   }):start()
 end
