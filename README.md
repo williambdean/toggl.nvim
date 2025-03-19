@@ -19,7 +19,7 @@ Using your favorite plugin manager, add the following:
 
 ```lua
 {
-    "wd60622/toggl.nvim",
+    "williambdean/toggl.nvim",
     opts = {
         -- If not provided in TOGGL_API_TOKEN env variable
         get_token = function()
