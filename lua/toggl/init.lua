@@ -1,23 +1,8 @@
 local health = require("toggl.health")
 local Job = require("plenary.job")
+local log = require("toggl.log")
+
 local M = {}
-
-local notify = function(msg, level)
-  if msg == nil then
-    return
-  end
-
-  vim.notify(msg, level, { title = "Toggl" })
-end
-
-local log = {
-  info = function(msg)
-    notify(msg, vim.log.levels.INFO)
-  end,
-  error = function(msg)
-    notify(msg, vim.log.levels.ERROR)
-  end,
-}
 
 local partial = function(fn, ...)
   local args = { ... }
