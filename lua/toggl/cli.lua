@@ -33,6 +33,12 @@ function M.create_callback(opts)
 end
 
 M.run = function(opts)
+  opts = opts or {}
+
+  if M.is_blank(opts.cb) then
+    opts.cb = M.create_callback({})
+  end
+
   local mode = opts.mode or "async"
   local job = Job:new({
     enable_recording = true,
@@ -142,8 +148,6 @@ local create_subcommand = function(command)
   for k, v in pairs(replace) do
     command = string.gsub(command, k, v)
   end
-
-  vim.print("Creating subcommand: " .. command)
   subcommand.command = command
 
   setmetatable(subcommand, {
