@@ -161,6 +161,50 @@ function M.toggl_stop()
   }):start()
 end
 
+local copy = function(str, register)
+  if register == nil then
+    register = '"'
+  end
+
+  vim.fn.setreg(register, str)
+  log.info("Copied " .. str .. " to register " .. register)
+end
+
+function M.projects()
+  local opts = {}
+  opts.cb = function(stdout, stderr)
+    if stderr ~= "" then
+      log.error(stderr)
+    end
+
+    if stdout ~= "" then
+      local projects = vim.split(stdout, "\n")
+
+      vim.ui.select(projects, {
+        prompt = "Select a project:",
+        format_item = function(item)
+          return item
+        end,
+      }, function(selected)
+        if selected then
+          local project = vim.trim(selected)
+          copy(project, "+")
+        end
+      end)
+    end
+  end
+
+  Job:new({
+    command = "toggl",
+    args = { "list", "project" },
+    on_exit = vim.schedule_wrap(function(j_self, _, _)
+      local stdout = table.concat(j_self:result(), "\n")
+      local stderr = table.concat(j_self:stderr_result(), "\n")
+      opts.cb(stdout, stderr)
+    end),
+  }):start()
+end
+
 function M.setup(opts)
   M.config = opts or {}
   opts.get_token = opts.get_token or function()
@@ -172,6 +216,7 @@ function M.setup(opts)
   vim.api.nvim_create_user_command("TogglStart", M.toggl_start, { nargs = "*" })
   vim.api.nvim_create_user_command("TogglCurrent", M.toggl_current, {})
   vim.api.nvim_create_user_command("TogglStop", M.toggl_stop, {})
+  vim.api.nvim_create_user_command("TogglProjects", M.projects, {})
   if health.greater_than_480() and health.has_toggl_api_token() then
     return
   end
