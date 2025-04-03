@@ -126,8 +126,12 @@ function M.setup(opts)
   vim.api.nvim_create_user_command("TogglInit", toggl.config.init, {})
   vim.api.nvim_create_user_command("TogglConfig", M.toggl_config, {})
   vim.api.nvim_create_user_command("TogglStart", M.toggl_start, { nargs = "*" })
-  vim.api.nvim_create_user_command("TogglCurrent", toggl.current, {})
-  vim.api.nvim_create_user_command("TogglStop", toggl.stop, {})
+  vim.api.nvim_create_user_command("TogglCurrent", function()
+    toggl.current {}
+  end, {})
+  vim.api.nvim_create_user_command("TogglStop", function()
+    toggl.stop {}
+  end, {})
   vim.api.nvim_create_user_command("TogglProjects", M.projects, {})
   if health.greater_than_480() and health.has_toggl_api_token() then
     return
