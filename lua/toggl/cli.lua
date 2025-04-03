@@ -1,6 +1,6 @@
 --- Adapted from octo.nvim
-local Job = require("plenary.job")
-local log = require("toggl.log")
+local Job = require "plenary.job"
+local log = require "toggl.log"
 
 local M = {}
 
@@ -36,11 +36,11 @@ M.run = function(opts)
   opts = opts or {}
 
   if M.is_blank(opts.cb) then
-    opts.cb = M.create_callback({})
+    opts.cb = M.create_callback {}
   end
 
   local mode = opts.mode or "async"
-  local job = Job:new({
+  local job = Job:new {
     enable_recording = true,
     command = "toggl",
     args = opts.args,
@@ -56,7 +56,7 @@ M.run = function(opts)
         opts.cb(output, stderr)
       end
     end),
-  })
+  }
   if mode == "sync" then
     job:sync(conf.timeout)
     return table.concat(job:result(), "\n"),
@@ -163,12 +163,12 @@ local create_subcommand = function(command)
       opts.opts = nil
       args = M.insert_args(args, opts)
 
-      return M.run({
+      return M.run {
         args = args,
         mode = run_opts.mode,
         cb = run_opts.cb,
         stream_cb = run_opts.stream_cb,
-      })
+      }
     end,
     __index = function(t, key)
       for k, v in pairs(replace) do
@@ -188,12 +188,12 @@ local create_subcommand = function(command)
         opts.opts = nil
         args = M.insert_args(args, opts)
 
-        return M.run({
+        return M.run {
           args = args,
           mode = run_opts.mode,
           cb = run_opts.cb,
           stream_cb = run_opts.stream_cb,
-        })
+        }
       end
     end,
   })
@@ -202,6 +202,19 @@ local create_subcommand = function(command)
 end
 
 setmetatable(M, {
+  __call = function(t, opts)
+    local run_opts = opts.opts or {}
+
+    local args = {}
+    opts.opts = nil
+    args = M.insert_args(args, opts)
+    return M.run {
+      args = args,
+      mode = run_opts.mode,
+      cb = run_opts.cb,
+      stream_cb = run_opts.stream_cb,
+    }
+  end,
   __index = function(_, key)
     return create_subcommand(key)
   end,
