@@ -7,28 +7,18 @@ Wrapper around [watercooler-labs/toggl-cli](https://github.com/watercooler-labs/
 - start/stop time entries
 - view current time entry
 
-Based on configuration, the commands can either be used with either `:Toggl <subcommand>`
+The commands can either be used with either `:Toggl<command>` or `:Toggl <subcommand>`
 
-| Subcommand | Description |
-| --- | --- |
-| auth | Authenticate with Toggl. Not required if `TOGGL_API_TOKEN` is set |
-| config | Edit the configuration file |
-| current | Show the current time entry |
-| init | Initialize configuration file |
-| start <description> | Start a new time entry with the given description |
-| stop | Stop the current time entry |
+| Command | Subcommand | Description |
+| --- | --- | --- |
+| `TogglAuth` | `auth` | Authenticate with Toggl. Not required if `TOGGL_API_TOKEN` is set |
+| `TogglConfig` | `config` | Edit the configuration file |
+| `TogglCurrent` | `current` | Show the current time entry |
+| `ToggleInit` | `init` | Initialize configuration file |
+| `TogglStart <description>` | `start <description>` | Start a new time entry with the given description |
+| `TogglStop` | `stop` | Stop the current time entry |
 
-or with:
-
-| Command | Description |
-| --- | --- |
-| `:TogglAuth` | Authenticate with Toggl. Not required if `TOGGL_API_TOKEN` is set |
-| `:TogglConfig` | Edit the configuration file |
-| `:TogglCurrent` | Show the current time entry |
-| `:TogglInit` | Initialize configuration file |
-| `:TogglStart <description>` | Start a new time entry with the given description |
-| `:TogglStop` | Stop the current time entry |
-
+The default behavior is `Toggl <subcommand>` unless `use_subcommands` is set to `false` in the plugin options.
 
 ## Installation
 
