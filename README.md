@@ -2,18 +2,25 @@
 
 Wrapper around [watercooler-labs/toggl-cli](https://github.com/watercooler-labs/toggl-cli) to offer:
 
-| Command | Description |
-| --- | --- |
-| `:TogglAuth` | Authenticate with Toggl. Not required if `TOGGL_API_TOKEN` is set |
-| `:TogglConfig` | Edit the configuration file |
-| `:TogglCurrent` | Show the current time entry |
-| `:TogglInit` | Initialize configuration file |
-| `:TogglStart <description>` | Start a new time entry with the given description |
-| `:TogglStop` | Stop the current time entry |
+- authentication
+- configuration file management
+- start/stop time entries
+- view current time entry
 
+The commands can either be used with either `:Toggl<command>` or `:Toggl <subcommand>`
+
+| Command | Subcommand | Description |
+| --- | --- | --- |
+| `TogglAuth` | `auth` | Authenticate with Toggl. Not required if `TOGGL_API_TOKEN` is set |
+| `TogglConfig` | `config` | Edit the configuration file |
+| `TogglCurrent` | `current` | Show the current time entry |
+| `ToggleInit` | `init` | Initialize configuration file |
+| `TogglStart <description>` | `start <description>` | Start a new time entry with the given description |
+| `TogglStop` | `stop` | Stop the current time entry |
+
+The default behavior is `Toggl <subcommand>` unless `use_subcommands` is set to `false` in the plugin options.
 
 ## Installation
-
 
 Using your favorite plugin manager, add the following:
 
@@ -25,6 +32,8 @@ Using your favorite plugin manager, add the following:
         get_token = function()
             return "your_toggl_api_token",
         end,
+        -- Use Toggl <subcommand> over Toggl<command>
+        use_subcommands = true,
     },
 }
 
