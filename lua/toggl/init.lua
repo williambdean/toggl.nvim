@@ -1,5 +1,4 @@
 local health = require "toggl.health"
-local Job = require "plenary.job"
 local log = require "toggl.log"
 local toggl = require "toggl.cli"
 
@@ -65,7 +64,7 @@ function M.toggl_config()
           end
 
           if result:match "No config file found" then
-            log.info "Run TogglInit to initialize config."
+            log.info "Run TogglInit or Toggl init to initialize config."
             config_exists = false
             return
           end
@@ -117,30 +116,103 @@ function M.projects()
   }
 end
 
+local complete = function(_, cmdline, _)
+  local args = vim.split(cmdline, " ")
+  local last_arg = args[#args]
+
+  if #args > 2 then
+    return {}
+  end
+
+  local available_commands = {
+    "start",
+    "stop",
+    "config",
+    "current",
+    "init",
+    "projects",
+    "auth",
+  }
+
+  local completions = {}
+  for _, command in ipairs(available_commands) do
+    if command:sub(1, #last_arg) == last_arg then
+      table.insert(completions, command)
+    end
+  end
+
+  return completions
+end
+local execute_subcommand = function(command_opts, opts)
+  local command = command_opts.fargs[1]
+  local rest = vim.list_slice(command_opts.fargs, 2)
+
+  -- Combine a table with " "
+  local combined = table.concat(rest, " ")
+
+  local func_mapping = {
+    start = M.toggl_start,
+    stop = function(_)
+      toggl.stop {}
+    end,
+    config = M.toggl_config,
+    current = function()
+      toggl.current {}
+    end,
+    init = toggl.config.init,
+    projects = M.projects,
+    auth = partial(M.toggl_auth, opts.get_token),
+  }
+  local func = func_mapping[command]
+
+  if func then
+    func { args = combined }
+  else
+    log.error("Unknown command: " .. command)
+  end
+end
+
+local default_config = {
+  use_subcommands = true,
+}
+
 function M.setup(opts)
-  M.config = opts or {}
+  opts = opts or {}
+  M.config = vim.tbl_deep_extend("force", opts, default_config)
+
+  --- TODO: Check the logic here
   opts.get_token = opts.get_token or function()
     return ""
   end
 
-  vim.api.nvim_create_user_command("TogglInit", toggl.config.init, {})
-  vim.api.nvim_create_user_command("TogglConfig", M.toggl_config, {})
-  vim.api.nvim_create_user_command("TogglStart", M.toggl_start, { nargs = "*" })
-  vim.api.nvim_create_user_command("TogglCurrent", function()
-    toggl.current {}
-  end, {})
-  vim.api.nvim_create_user_command("TogglStop", function()
-    toggl.stop {}
-  end, {})
-  vim.api.nvim_create_user_command("TogglProjects", M.projects, {})
-  if health.greater_than_480() and health.has_toggl_api_token() then
-    return
+  if M.config.use_subcommands then
+    vim.api.nvim_create_user_command("Toggl", function(command_opts)
+      execute_subcommand(command_opts, opts)
+    end, { complete = complete, nargs = "*", range = false })
+  else
+    vim.api.nvim_create_user_command("TogglInit", toggl.config.init, {})
+    vim.api.nvim_create_user_command("TogglConfig", M.toggl_config, {})
+    vim.api.nvim_create_user_command(
+      "TogglStart",
+      M.toggl_start,
+      { nargs = "*" }
+    )
+    vim.api.nvim_create_user_command("TogglCurrent", function()
+      toggl.current {}
+    end, {})
+    vim.api.nvim_create_user_command("TogglStop", function()
+      toggl.stop {}
+    end, {})
+    vim.api.nvim_create_user_command("TogglProjects", M.projects, {})
+    if health.greater_than_480() and health.has_toggl_api_token() then
+      return
+    end
+    vim.api.nvim_create_user_command(
+      "TogglAuth",
+      partial(M.toggl_auth, opts.get_token),
+      {}
+    )
   end
-  vim.api.nvim_create_user_command(
-    "TogglAuth",
-    partial(M.toggl_auth, opts.get_token),
-    {}
-  )
 end
 
 return M
