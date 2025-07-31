@@ -147,10 +147,17 @@ local execute_subcommand = function(command_opts, opts)
   local command = command_opts.fargs[1]
   local rest = vim.list_slice(command_opts.fargs, 2)
 
+  if not command then
+    return toggl.current {}
+  end
+
   -- Combine a table with " "
   local combined = table.concat(rest, " ")
 
   local func_mapping = {
+    [""] = function()
+      toggl.current {}
+    end,
     start = M.toggl_start,
     stop = function(_)
       toggl.stop {}
