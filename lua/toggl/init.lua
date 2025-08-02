@@ -33,6 +33,21 @@ local function remove_surrounding_quotes(str)
   return str
 end
 
+function M.toggl_list(opts)
+  local n = opts.args
+  n = n ~= "" and n or 5
+
+  toggl.list {
+    n = n,
+    opts = {
+      cb = function(data)
+        data = "The last " .. n .. " Toggl entries:\n" .. data
+        log.info(data)
+      end,
+    },
+  }
+end
+
 function M.toggl_start(opts)
   local description = opts.args
   description = remove_surrounding_quotes(description)
@@ -125,13 +140,14 @@ local complete = function(_, cmdline, _)
   end
 
   local available_commands = {
-    "start",
-    "stop",
+    "auth",
     "config",
     "current",
     "init",
+    "list",
     "projects",
-    "auth",
+    "start",
+    "stop",
   }
 
   local completions = {}
@@ -162,6 +178,7 @@ local execute_subcommand = function(command_opts, opts)
     stop = function(_)
       toggl.stop {}
     end,
+    list = M.toggl_list,
     config = M.toggl_config,
     current = function()
       toggl.current {}
@@ -198,6 +215,12 @@ function M.setup(opts)
     end, { complete = complete, nargs = "*", range = false })
   else
     vim.api.nvim_create_user_command("TogglInit", toggl.config.init, {})
+    vim.api.nvim_create_user_command("TogglList", toggl.list, {
+      nargs = "?",
+      complete = "number",
+      range = false,
+      desc = "List recent Toggl entries",
+    })
     vim.api.nvim_create_user_command("TogglConfig", M.toggl_config, {})
     vim.api.nvim_create_user_command(
       "TogglStart",

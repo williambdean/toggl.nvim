@@ -6,6 +6,7 @@ Wrapper around [watercooler-labs/toggl-cli](https://github.com/watercooler-labs/
 - configuration file management
 - start/stop time entries
 - view current time entry
+- list recent time entries
 
 The commands can either be used with either `:Toggl<command>` or `:Toggl <subcommand>`
 
@@ -17,6 +18,7 @@ The commands can either be used with either `:Toggl<command>` or `:Toggl <subcom
 | `ToggleInit` | `init` | Initialize configuration file |
 | `TogglStart <description>` | `start <description>` | Start a new time entry with the given description |
 | `TogglStop` | `stop` | Stop the current time entry |
+| `TogglList <n>` | `list <n>` | List recent time entries, defaults to 5 |
 
 The default behavior is `Toggl <subcommand>` unless `use_subcommands` is set to `false` in the plugin options.
 
