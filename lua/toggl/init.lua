@@ -183,7 +183,9 @@ local execute_subcommand = function(command_opts, opts)
     current = function()
       toggl.current {}
     end,
-    init = toggl.config.init,
+    init = function()
+      toggl.config.init()
+    end,
     projects = M.projects,
     auth = partial(M.toggl_auth, opts.get_token),
   }
@@ -214,7 +216,9 @@ function M.setup(opts)
       execute_subcommand(command_opts, opts)
     end, { complete = complete, nargs = "*", range = false })
   else
-    vim.api.nvim_create_user_command("TogglInit", toggl.config.init, {})
+    vim.api.nvim_create_user_command("TogglInit", function()
+      toggl.config.init()
+    end, {})
     vim.api.nvim_create_user_command("TogglList", toggl.list, {
       nargs = "?",
       complete = "number",
