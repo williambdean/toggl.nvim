@@ -1,2 +1,2 @@
 format:
-	pre-commit run --all-files
+	prek run --all-files
