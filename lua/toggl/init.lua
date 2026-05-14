@@ -11,6 +11,26 @@ local partial = function(fn, ...)
   end
 end
 
+---@param result TogglProcessResult
+local function log_result(result)
+  if result:ok() then
+    local data = result:text()
+    if not data then
+      return
+    end
+    log.info(data)
+  else
+    local data = result.stderr
+    if data == "" then
+      data = result:text()
+    end
+    if not data or data == "" then
+      return
+    end
+    log.error(data)
+  end
+end
+
 function M.toggl_auth(get_token)
   local token = get_token()
   if token == "" then
@@ -18,7 +38,8 @@ function M.toggl_auth(get_token)
     return
   end
 
-  toggl.auth { token }
+  local result = toggl.auth { token }
+  log_result(result)
 end
 
 local function surrounded(str, char)
@@ -37,15 +58,22 @@ function M.toggl_list(opts)
   local n = opts.args
   n = n ~= "" and n or 5
 
-  toggl.list {
-    n = n,
-    opts = {
-      cb = function(data)
-        data = "The last " .. n .. " Toggl entries:\n" .. data
-        log.info(data)
-      end,
-    },
-  }
+  local result = toggl.list { n = n }
+  if not result then
+    return
+  end
+  if not result:ok() then
+    log_result(result)
+    return
+  end
+
+  local data = result:text()
+  if not data then
+    return
+  end
+
+  data = "The last " .. n .. " Toggl entries:\n" .. data
+  log.info(data)
 end
 
 function M.toggl_start(opts)
@@ -56,46 +84,53 @@ function M.toggl_start(opts)
     return
   end
 
-  toggl.start { description }
+  local result = toggl.start { description }
+  log_result(result)
+end
+
+function M.toggl_current()
+  local result = toggl.current {}
+  log_result(result)
+end
+
+function M.toggl_stop()
+  local result = toggl.stop {}
+  log_result(result)
+end
+
+function M.toggl_init()
+  local result = toggl.config.init()
+  log_result(result)
 end
 
 function M.toggl_config()
-  -- Assume the config exists until proven otherwise
-  local config_exists = true
+  local result = toggl.config { path = true }
+  if not result then
+    return
+  end
+  if not result:ok() then
+    log_result(result)
+    return
+  end
 
-  --- TODO: Handle the exit code
-  toggl.config {
-    path = true,
-    opts = {
-      stream_cb = toggl.create_callback {
-        success = function(result)
-          if not config_exists then
-            return
-          end
+  local stdout = result:text()
+  if not stdout then
+    return
+  end
 
-          result = vim.trim(result)
-          if result == "" then
-            return
-          end
+  if stdout:match "No config file found" then
+    log.info "Run TogglInit or Toggl init to initialize config."
+    return
+  end
 
-          if result:match "No config file found" then
-            log.info "Run TogglInit or Toggl init to initialize config."
-            config_exists = false
-            return
-          end
+  if not stdout:match "%.toml$" then
+    log.error "Invalid config path"
+    return
+  end
 
-          if not result:match "%.toml$" then
-            log.error "Invalid config path"
-            return
-          end
-
-          local path = result
-          log.info("Config path: " .. path)
-          vim.cmd("tabnew " .. vim.fn.fnameescape(path))
-        end,
-      },
-    },
-  }
+  local path = stdout
+  log.info("Config path: " .. path)
+  vim.cmd.tabnew(vim.fn.fnameescape(path))
 end
 
 local copy = function(str, register)
@@ -108,27 +143,33 @@ local copy = function(str, register)
 end
 
 function M.projects()
-  toggl.list.project {
-    opts = {
-      cb = toggl.create_callback {
-        success = function(stdout)
-          local projects = vim.split(stdout, "\n")
+  local result = toggl.list.project {}
+  if not result then
+    return
+  end
+  if not result:ok() then
+    log_result(result)
+    return
+  end
 
-          vim.ui.select(projects, {
-            prompt = "Select a project:",
-            format_item = function(item)
-              return item
-            end,
-          }, function(selected)
-            if selected then
-              local project = vim.trim(selected)
-              copy(project, "+")
-            end
-          end)
-        end,
-      },
-    },
-  }
+  local stdout = result:text()
+  if not stdout then
+    return
+  end
+
+  local projects = vim.split(stdout, "\n")
+
+  vim.ui.select(projects, {
+    prompt = "Select a project:",
+    format_item = function(item)
+      return item
+    end,
+  }, function(selected)
+    if selected then
+      local project = vim.trim(selected)
+      copy(project, "+")
+    end
+  end)
 end
 
 local complete = function(_, cmdline, _)
@@ -164,7 +205,7 @@ local execute_subcommand = function(command_opts, opts)
   local rest = vim.list_slice(command_opts.fargs, 2)
 
   if not command then
-    return toggl.current {}
+    return M.toggl_current()
   end
 
   -- Combine a table with " "
@@ -172,20 +213,14 @@ local execute_subcommand = function(command_opts, opts)
 
   local func_mapping = {
     [""] = function()
-      toggl.current {}
+      M.toggl_current()
     end,
     start = M.toggl_start,
-    stop = function(_)
-      toggl.stop {}
-    end,
+    stop = M.toggl_stop,
     list = M.toggl_list,
     config = M.toggl_config,
-    current = function()
-      toggl.current {}
-    end,
-    init = function()
-      toggl.config.init()
-    end,
+    current = M.toggl_current,
+    init = M.toggl_init,
     projects = M.projects,
     auth = partial(M.toggl_auth, opts.get_token),
   }
@@ -217,9 +252,9 @@ function M.setup(opts)
     end, { complete = complete, nargs = "*", range = false })
   else
     vim.api.nvim_create_user_command("TogglInit", function()
-      toggl.config.init()
+      M.toggl_init()
     end, {})
-    vim.api.nvim_create_user_command("TogglList", toggl.list, {
+    vim.api.nvim_create_user_command("TogglList", M.toggl_list, {
       nargs = "?",
       complete = "number",
       range = false,
@@ -232,10 +267,10 @@ function M.setup(opts)
       { nargs = "*" }
     )
     vim.api.nvim_create_user_command("TogglCurrent", function()
-      toggl.current {}
+      M.toggl_current()
     end, {})
     vim.api.nvim_create_user_command("TogglStop", function()
-      toggl.stop {}
+      M.toggl_stop()
     end, {})
     vim.api.nvim_create_user_command("TogglProjects", M.projects, {})
     if health.greater_than_480() and health.has_toggl_api_token() then
