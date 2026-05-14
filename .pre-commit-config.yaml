@@ -4,11 +4,11 @@ ci:
 
 repos:
   - repo: https://github.com/JohnnyMorganz/StyLua
-    rev: v2.0.2
+    rev: v2.4.1
     hooks:
       - id: stylua
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: debug-statements
       - id: trailing-whitespace
