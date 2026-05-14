@@ -16,8 +16,6 @@ local M = {}
 ---@field env? table<string, string|integer>
 ---@field timeout? number
 ---@field cwd? string
----@field stream_cb? fun(stdout: string?, stderr: string?)
----@field cb? fun(stdout: string, stderr: string, code: number, result: TogglResult)
 ---@field dry_run? boolean
 
 ---@class TogglDryRunResult
@@ -70,23 +68,6 @@ local function wrap_res(obj)
   return result
 end
 
----@param carry string
----@param chunk string
----@param emit fun(line: string): nil
----@return string
-local function emit_complete_lines(carry, chunk, emit)
-  local buffered = carry .. chunk
-  while true do
-    local idx = buffered:find("\n", 1, true)
-    if not idx then
-      break
-    end
-    emit(buffered:sub(1, idx - 1))
-    buffered = buffered:sub(idx + 1)
-  end
-  return buffered
-end
-
 ---@param bin string
 ---@param args string[]
 ---@param transformer_opts TogglRuntimeOpts
@@ -96,8 +77,6 @@ function M.run(bin, args, transformer_opts)
 
   local cmd = { bin, unpack(args) }
   local co = coroutine.running()
-  local has_async_callbacks = transformer_opts.cb ~= nil
-    or transformer_opts.stream_cb ~= nil
 
   local sys_opts = {
     text = true,
@@ -119,59 +98,13 @@ function M.run(bin, args, transformer_opts)
 
   local timeout = transformer_opts.timeout or 10000
 
-  if not co and not has_async_callbacks then
+  if not co then
     local obj = vim.system(cmd, sys_opts):wait(timeout)
     return wrap_res(obj)
   end
 
-  local stdout_chunks = {}
-  local stderr_chunks = {}
-  local stdout_carry = ""
-  local stderr_carry = ""
-
-  if transformer_opts.stream_cb then
-    sys_opts.stdout = function(_, data)
-      if not data then
-        return
-      end
-      table.insert(stdout_chunks, data)
-      stdout_carry = emit_complete_lines(stdout_carry, data, function(line)
-        transformer_opts.stream_cb(line, nil)
-      end)
-    end
-
-    sys_opts.stderr = function(_, data)
-      if not data then
-        return
-      end
-      table.insert(stderr_chunks, data)
-      stderr_carry = emit_complete_lines(stderr_carry, data, function(line)
-        transformer_opts.stream_cb(nil, line)
-      end)
-    end
-  end
-
   vim.system(cmd, sys_opts, function(obj)
-    if transformer_opts.stream_cb then
-      if stdout_carry ~= "" then
-        transformer_opts.stream_cb(stdout_carry, nil)
-      end
-      if stderr_carry ~= "" then
-        transformer_opts.stream_cb(nil, stderr_carry)
-      end
-    end
-
-    ---@diagnostic disable-next-line: no-unknown
-    if transformer_opts.stream_cb then
-      obj.stdout = table.concat(stdout_chunks)
-      obj.stderr = table.concat(stderr_chunks)
-    end
-
     local wrapped = wrap_res(obj)
-    if transformer_opts.cb then
-      transformer_opts.cb(wrapped.stdout, wrapped.stderr, wrapped.code, wrapped)
-    end
-
     if co then
       vim.schedule(function()
         coroutine.resume(co, wrapped)
@@ -272,8 +205,6 @@ function M.default_transformer(path, opts)
     env = runtime_opts.env,
     timeout = runtime_opts.timeout,
     cwd = runtime_opts.cwd,
-    stream_cb = runtime_opts.stream_cb,
-    cb = runtime_opts.cb,
     dry_run = runtime_opts.dry_run,
   }
 
