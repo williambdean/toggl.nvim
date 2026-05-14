@@ -38,5 +38,6 @@ Using your favorite plugin manager, add the following:
         use_subcommands = true,
     },
 }
-
 ```
+
+Requires Neovim >= 0.10.0.
