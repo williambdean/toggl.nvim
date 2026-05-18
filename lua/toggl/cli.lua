@@ -24,6 +24,8 @@
 ---@field config TogglConfigCmd
 ---@field continue fun(opts?: TogglCommandOpts): TogglProcessResult
 ---@field current fun(opts?: TogglCommandOpts): TogglProcessResult
+---@field delete fun(opts?: TogglCommandOpts): TogglProcessResult
+---@field edit fun(opts?: TogglCommandOpts): TogglProcessResult
 ---@field list TogglListCmd
 ---@field logout fun(opts?: TogglCommandOpts): TogglProcessResult
 ---@field running fun(opts?: TogglCommandOpts): TogglProcessResult

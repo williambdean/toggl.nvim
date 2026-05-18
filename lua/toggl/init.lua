@@ -88,6 +88,31 @@ function M.toggl_start(opts)
   log_result(result)
 end
 
+function M.toggl_edit_description()
+  local current_result = toggl.list { n = 1, json = true }
+  if not current_result or not current_result:ok() then
+    log.error "Could not fetch current entry"
+    return
+  end
+
+  local entries = current_result:json()
+  local current_desc = ""
+  if entries and #entries > 0 then
+    current_desc = entries[1].description or ""
+  end
+
+  vim.ui.input({
+    prompt = "Edit description:",
+    default = current_desc,
+  }, function(input)
+    if not input then
+      return
+    end
+    local result = toggl.edit { description = input }
+    log_result(result)
+  end)
+end
+
 function M.toggl_current()
   local result = toggl.current {}
   log_result(result)
@@ -184,6 +209,7 @@ local complete = function(_, cmdline, _)
     "auth",
     "config",
     "current",
+    "edit",
     "init",
     "list",
     "projects",
@@ -217,6 +243,7 @@ local execute_subcommand = function(command_opts, opts)
     end,
     start = M.toggl_start,
     stop = M.toggl_stop,
+    edit = M.toggl_edit_description,
     list = M.toggl_list,
     config = M.toggl_config,
     current = M.toggl_current,
@@ -272,8 +299,11 @@ function M.setup(opts)
     vim.api.nvim_create_user_command("TogglStop", function()
       M.toggl_stop()
     end, {})
+    vim.api.nvim_create_user_command("TogglEdit", function()
+      M.toggl_edit_description()
+    end, {})
     vim.api.nvim_create_user_command("TogglProjects", M.projects, {})
-    if health.greater_than_480() and health.has_toggl_api_token() then
+    if health.meets_min_version() and health.has_toggl_api_token() then
       return
     end
     vim.api.nvim_create_user_command(
