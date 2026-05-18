@@ -1,4 +1,5 @@
-local M = {}
+-- local M = {}
+local toggl = require "toggl.cli"
 
 local function is_newer_version(version, min_version)
   local major, minor, patch = version:match "(%d+)%.(%d+)%.(%d+)"
@@ -15,11 +16,8 @@ local function is_newer_version(version, min_version)
 end
 
 function M.has_toggl_cli()
-  local handle = io.popen "which toggl"
-  local result = handle:read "*a"
-  handle:close()
-
-  return result ~= ""
+  local result = toggl { version = true }
+  return result and result:ok() or false
 end
 
 function M.has_toggl_api_token()
@@ -27,12 +25,18 @@ function M.has_toggl_api_token()
 end
 
 function M.greater_than_480()
-  local handle = io.popen "toggl --version"
-  local result = handle:read "*a"
-  handle:close()
-
   local min_version = "0.4.8"
-  return is_newer_version(result, min_version)
+  local result = toggl { version = true }
+  if not result or not result:ok() then
+    return false
+  end
+
+  local version = result:text()
+  if not version then
+    return false
+  end
+
+  return is_newer_version(version, min_version)
 end
 
 function M.check()
